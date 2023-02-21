@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'drf_spectacular',
     'core',
-    # 'user',
+    'user',
+    'images'
 ]
 
 MIDDLEWARE = [
@@ -136,3 +137,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Setting our User model.
 AUTH_USER_MODEL = 'core.User'
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": 'drf_spectacular.openapi.AutoSchema'
+}
+
+SPECTACULAR_SETTINGS = {
+    'COMPONENT_SPLIT_REQUEST': True,
+}
