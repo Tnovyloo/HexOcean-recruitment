@@ -55,6 +55,23 @@ class UserManager(BaseUserManager):
         return user
 
 
+class Membership(models.Model):
+    """Membership for """
+    tier_name = models.CharField(max_length=255, unique=True)
+    image_1_height = models.IntegerField(null=False)
+    image_1_width = models.IntegerField(null=False)
+    image_2_height = models.IntegerField(null=True)
+    image_2_width = models.IntegerField(null=True)
+
+    def __str__(self):
+        return self.tier_name
+
+
+def get_basic_membership():
+    return Membership.objects.get_or_create(tier_name="BASIC",
+                                            image_1_height=200,
+                                            image_1_width=200)[0].id
+
 class User(AbstractBaseUser, PermissionsMixin):
     """Model for the user in the system"""
     MEMBERSHIP = (
@@ -74,6 +91,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     membership = models.CharField(max_length=25, choices=MEMBERSHIP, default='BASIC')
+    membership1 = models.ForeignKey(Membership, default=get_basic_membership,
+                                   on_delete=models.CASCADE)
 
     objects = UserManager()
 
