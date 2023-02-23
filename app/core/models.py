@@ -19,17 +19,17 @@ def image_file_path(instance, filename):
     filename = f'{uuid.uuid4()}{ext}'
     return os.path.join('uploads', 'images', 'original', filename)
 
-def image_file_path_200(instance, filename):
+def image_file_path_1(instance, filename):
     """Generate file path for new Image 200"""
     ext = os.path.splitext(filename)[1]
     filename = f'{uuid.uuid4()}{ext}'
-    return os.path.join('uploads', 'images', '200', filename)
+    return os.path.join('uploads', 'images', '1', filename)
 
-def image_file_path_400(instance, filename):
+def image_file_path_2(instance, filename):
     """Generate file path for new Image 400"""
     ext = os.path.splitext(filename)[1]
     filename = f'{uuid.uuid4()}{ext}'
-    return os.path.join('uploads', 'images', '400', filename)
+    return os.path.join('uploads', 'images', '2', filename)
 
 
 class UserManager(BaseUserManager):
@@ -66,32 +66,44 @@ class Membership(models.Model):
     def __str__(self):
         return self.tier_name
 
+    @classmethod
+    def get_default_pk(cls):
+        tier, created = cls.objects.get_or_create(
+            tier_name="BASIC",
+            image_1_height=200,
+            image_1_width=200
+        )
+        return tier.pk
 
-def get_basic_membership():
-    return Membership.objects.get_or_create(tier_name="BASIC",
-                                            image_1_height=200,
-                                            image_1_width=200)[0].id
+
+# def get_basic_membership():
+#     object = Membership.objects.get_or_create(tier_name="PREMIUM",
+#                                      image_1_height=200,
+#                                      image_1_width=200,
+#                                      image_2_height=400,
+#                                      image_2_width=400)
+#     object.save()
+#     return Membership.objects.get_or_create(tier_name="BASIC",
+#                                             image_1_height=200,
+#                                             image_1_width=200)[0].id
+
 
 class User(AbstractBaseUser, PermissionsMixin):
     """Model for the user in the system"""
-    MEMBERSHIP = (
-        ('BASIC', 'Basic'),
-        ('PREMIUM', 'Premium'),
-        ('ENTERPRISE', 'Enterprise')
-    )
-
-    # NOTES.
-    # TODO Create a membership model with specified thumbnail
-    # output size. Change Image.image_200 field to image_2 field
-    # and also Image.image_400 to image_2. Change this fields in serializer
-    # - Might create "CUSTOM" choice in MEMBERSHIP (?)
+    # MEMBERSHIP = (
+    #     ('BASIC', 'Basic'),
+    #     ('PREMIUM', 'Premium'),
+    #     ('ENTERPRISE', 'Enterprise')
+    # )
 
     email = models.EmailField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    membership = models.CharField(max_length=25, choices=MEMBERSHIP, default='BASIC')
-    membership1 = models.ForeignKey(Membership, default=get_basic_membership,
+    # membership = models.CharField(max_length=25, choices=MEMBERSHIP, default='BASIC')
+    # membership = models.ForeignKey(Membership, default=get_basic_membership,
+    #                                on_delete=models.CASCADE)
+    membership = models.ForeignKey(Membership, default=Membership.get_default_pk(),
                                    on_delete=models.CASCADE)
 
     objects = UserManager()
@@ -107,8 +119,8 @@ class Image(models.Model):
 
     title = models.CharField(max_length=255)
     image = models.ImageField(upload_to=image_file_path)
-    image_200 = models.ImageField(upload_to=image_file_path_200, blank=True)
-    image_400 = models.ImageField(upload_to=image_file_path_400, blank=True)
+    image_1 = models.ImageField(upload_to=image_file_path_1, blank=True)
+    image_2 = models.ImageField(upload_to=image_file_path_2, blank=True)
     created = models.DateTimeField(default=timezone.now())
     user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
 
@@ -118,12 +130,14 @@ class Image(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
-        img_200 = Img.open(self.image.path)
-        img_400 = Img.open(self.image.path)
+        img_1 = Img.open(self.image.path)
+        img_2 = Img.open(self.image.path)
 
-        output_size_200 = (200, 200)
-        output_size_400 = (400, 400)
-        img_200.thumbnail(output_size_200)
-        img_400.thumbnail(output_size_400)
-        img_200.save(self.image_200.path)
-        img_400.save(self.image_400.path)
+        output_size_1 = (user.membership.image_1_width,
+                         user.membership.image_1_height)
+        output_size_2 = (user.membership.image_2_width,
+                         user.membership.image_2_height)
+        img_1.thumbnail(output_size_1)
+        img_2.thumbnail(output_size_2)
+        img_1.save(self.image_1.path)
+        img_2.save(self.image_2.path)

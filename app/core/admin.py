@@ -16,8 +16,10 @@ class UserAdmin(admin.ModelAdmin):
     """Define the admin pages for users."""
     ordering = ['id']
     list_display = ['email', 'name', 'membership']
+
     # inlines = [UserImages]
 
 
 admin.site.register(models.User, UserAdmin)
 admin.site.register(models.Image)
+admin.site.register(models.Membership)
