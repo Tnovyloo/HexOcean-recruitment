@@ -20,13 +20,13 @@ def image_file_path(instance, filename):
     return os.path.join('uploads', 'images', 'original', filename)
 
 def image_file_path_1(instance, filename):
-    """Generate file path for new Image 200"""
+    """Generate file path for new Image 1"""
     ext = os.path.splitext(filename)[1]
     filename = f'{uuid.uuid4()}{ext}'
     return os.path.join('uploads', 'images', '1', filename)
 
 def image_file_path_2(instance, filename):
-    """Generate file path for new Image 400"""
+    """Generate file path for new Image 2"""
     ext = os.path.splitext(filename)[1]
     filename = f'{uuid.uuid4()}{ext}'
     return os.path.join('uploads', 'images', '2', filename)
@@ -118,26 +118,42 @@ class Image(models.Model):
     """Image Model"""
 
     title = models.CharField(max_length=255)
-    image = models.ImageField(upload_to=image_file_path)
+
+    image = models.ImageField(upload_to=image_file_path, blank=False)
     image_1 = models.ImageField(upload_to=image_file_path_1, blank=True)
     image_2 = models.ImageField(upload_to=image_file_path_2, blank=True)
+
     created = models.DateTimeField(default=timezone.now())
-    user = models.ForeignKey(get_user_model(), on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
-        return str(self.title)
+        return f"{self.user.email} | {self.title} | {self.user.membership}"
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
+        super(Image, self).save(*args, **kwargs)
 
-        img_1 = Img.open(self.image.path)
-        img_2 = Img.open(self.image.path)
+        # If BASIC user saves it.
+        if self.image_1:
 
-        output_size_1 = (user.membership.image_1_width,
-                         user.membership.image_1_height)
-        output_size_2 = (user.membership.image_2_width,
-                         user.membership.image_2_height)
-        img_1.thumbnail(output_size_1)
-        img_2.thumbnail(output_size_2)
-        img_1.save(self.image_1.path)
-        img_2.save(self.image_2.path)
+            self.image = self.image_1
+            self.image_2 = self.image_1
+
+            img_1 = Img.open(self.image_1.path)
+            img_2 = Img.open(self.image_1.path)
+            # img_org = Img.open(self.image_1.path)
+
+            # TODO REPAIR THE OVERRIDE OF SAVE METHOD.
+            output_size_1 = (self.user.membership.image_1_width,
+                             self.user.membership.image_1_height)
+
+            if self.user.membership.image_2_width and self.user.membership.image_2_height != 0:
+                output_size_2 = (self.user.membership.image_2_width,
+                                 self.user.membership.image_2_height)
+                img_2.thumbnail(output_size_2)
+                img_2.save(self.image_2.path)
+
+            img_1.thumbnail(output_size_1)
+
+            # img_org.save(self.image.path)
+            img_1.save(self.image_1.path)
+

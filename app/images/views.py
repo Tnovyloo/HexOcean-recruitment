@@ -5,30 +5,31 @@ from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from drf_yasg.utils import swagger_auto_schema
 
 from core.models import Image
 from .serializers import (ImageBasicUserSerializer,
-                        ImagePremiumUserSerializer
+                        ImagePremiumUserSerializer,
+                        ImageEnterpriseUserSerializer,
 )
 
 
 
 class ImageViewSet(mixins.ListModelMixin,
-                        mixins.UpdateModelMixin,
+                        # mixins.UpdateModelMixin,
                         mixins.DestroyModelMixin,
                         mixins.CreateModelMixin,
                         viewsets.GenericViewSet):
     """View set for Image model."""
     queryset = Image.objects.all()
     serializer_class = ImageBasicUserSerializer
-    authentication_classes = [TokenAuthentication]
+    # authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
 
+    # @swagger_auto_schema(query_serializer=ImagePremiumUserSerializer(), responses={200: ImagePremiumUserSerializer()},)
     def get_serializer_class(self):
         """Getting user membership and assign right serializer."""
         user = self.request.user
-        # print(self.request.user)
-        # print(self.request.user.membership)
 
         # FOR OLD ONE IN MODELS CHOICES
         # if user.membership == "BASIC":
@@ -41,6 +42,9 @@ class ImageViewSet(mixins.ListModelMixin,
             return ImageBasicUserSerializer
         if user.membership.tier_name == "PREMIUM":
             return ImagePremiumUserSerializer
+        if user.membership.tier_name != "BASIC" and \
+            user.membership.tier_name != "PREMIUM":
+            return ImageEnterpriseUserSerializer
 
     def get_queryset(self):
         """Filtering queryset by user objects."""
