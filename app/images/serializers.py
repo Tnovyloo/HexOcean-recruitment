@@ -25,7 +25,7 @@ class ImagePremiumUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = Image
         fields = ('title', 'image_1', 'image_2', 'image')
-        read_only_fields = ['image_2', 'image']
+        read_only_fields = ['image', 'image_2']
 
     def create(self, validated_data):
         """Create a image."""
@@ -33,6 +33,7 @@ class ImagePremiumUserSerializer(serializers.ModelSerializer):
 
         image = Image.objects.create(user=user, **validated_data)
         return image
+
 
 class ImageEnterpriseUserSerializer(serializers.ModelSerializer):
     pass

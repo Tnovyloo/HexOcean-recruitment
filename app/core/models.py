@@ -1,9 +1,13 @@
 """Models for app"""
 
+import sys
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 from PIL import Image as Img
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from io import BytesIO
+from django.core.files.base import ContentFile
 from django.contrib.auth.models import (
     AbstractBaseUser,
     BaseUserManager,
@@ -76,33 +80,13 @@ class Membership(models.Model):
         return tier.pk
 
 
-# def get_basic_membership():
-#     object = Membership.objects.get_or_create(tier_name="PREMIUM",
-#                                      image_1_height=200,
-#                                      image_1_width=200,
-#                                      image_2_height=400,
-#                                      image_2_width=400)
-#     object.save()
-#     return Membership.objects.get_or_create(tier_name="BASIC",
-#                                             image_1_height=200,
-#                                             image_1_width=200)[0].id
-
-
 class User(AbstractBaseUser, PermissionsMixin):
     """Model for the user in the system"""
-    # MEMBERSHIP = (
-    #     ('BASIC', 'Basic'),
-    #     ('PREMIUM', 'Premium'),
-    #     ('ENTERPRISE', 'Enterprise')
-    # )
 
     email = models.EmailField(max_length=255, unique=True)
     name = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    # membership = models.CharField(max_length=25, choices=MEMBERSHIP, default='BASIC')
-    # membership = models.ForeignKey(Membership, default=get_basic_membership,
-    #                                on_delete=models.CASCADE)
     membership = models.ForeignKey(Membership, default=Membership.get_default_pk(),
                                    on_delete=models.CASCADE)
 
@@ -130,30 +114,90 @@ class Image(models.Model):
         return f"{self.user.email} | {self.title} | {self.user.membership}"
 
     def save(self, *args, **kwargs):
+        """Override save method to save images in all resolution if membership permits"""
+
+        if not self.make_thumbnails():
+            raise Exception("Could not create thumbnail")
+
         super(Image, self).save(*args, **kwargs)
 
-        # If BASIC user saves it.
-        if self.image_1:
+    def make_thumbnails(self):
+        """Make thumbnails method."""
+        image_1 = Img.open(self.image_1)
 
-            self.image = self.image_1
-            self.image_2 = self.image_1
 
-            img_1 = Img.open(self.image_1.path)
-            img_2 = Img.open(self.image_1.path)
-            # img_org = Img.open(self.image_1.path)
+        OUTPUT_SIZE_1 = (self.user.membership.image_1_width,
+                         self.user.membership.image_1_height)
 
-            # TODO REPAIR THE OVERRIDE OF SAVE METHOD.
-            output_size_1 = (self.user.membership.image_1_width,
-                             self.user.membership.image_1_height)
+        # IF USER MEMBERSHIP IS NOT BASIC
+        if self.user.membership.image_2_width and self.user.membership.image_2_height != 0:
+            # SAVE IMAGE 2 ( DEFAULT IN 400PX )
+            image_2 = Img.open(self.image_1)
+            OUTPUT_SIZE_2 = (self.user.membership.image_2_width,
+                             self.user.membership.image_2_height
+                             )
+            image_2.thumbnail(OUTPUT_SIZE_2, Img.ANTIALIAS)
+            thumb_2_name, thumb_2_extension = os.path.splitext(self.image_1.name)
+            thumb_2_extension = thumb_2_extension.lower()
 
-            if self.user.membership.image_2_width and self.user.membership.image_2_height != 0:
-                output_size_2 = (self.user.membership.image_2_width,
-                                 self.user.membership.image_2_height)
-                img_2.thumbnail(output_size_2)
-                img_2.save(self.image_2.path)
+            thumb_2_filename = thumb_2_name + "_thumb2" + thumb_2_extension
 
-            img_1.thumbnail(output_size_1)
+            if thumb_2_extension in ['.jpg', '.jpeg']:
+                FTYPE = 'JPEG'
+            elif thumb_2_extension == '.png':
+                FTYPE = 'PNG'
+            else:
+                return False  # Unrecognized file type
 
-            # img_org.save(self.image.path)
-            img_1.save(self.image_1.path)
+            temp_thumb_2 = BytesIO()
+            image_2.save(temp_thumb_2, FTYPE)
+            temp_thumb_2.seek(0)
+
+            self.image_2.save(thumb_2_filename, ContentFile(temp_thumb_2.read()), save=False)
+            temp_thumb_2.close()
+
+            # SAVE ORIGINAL PHOTO
+            image = Img.open(self.image_1)
+            image_name, image_extension = os.path.splitext(self.image_1.name)
+            image_extension = image_extension.lower()
+
+            image_filename = image_name + '_original' + image_extension
+            if image_extension in ['.jpg', '.jpeg']:
+                FTYPE = 'JPEG'
+            elif image_extension == '.png':
+                FTYPE = 'PNG'
+            else:
+                return False
+
+            temp_image = BytesIO()
+            image.save(temp_image, FTYPE)
+            temp_image.seek(0)
+
+            self.image.save(image_filename, ContentFile(temp_image.read()), save=False)
+            temp_image.close()
+
+        # SAVING IMAGE 1
+
+        image_1.thumbnail(OUTPUT_SIZE_1, Img.ANTIALIAS)
+
+        thumb_1_name, thumb_1_extension = os.path.splitext(self.image_1.name)
+        thumb_1_extension = thumb_1_extension.lower()
+
+        thumb_1_filename = thumb_1_name + '_thumb1' + thumb_1_extension
+
+        if thumb_2_extension in ['.jpg', '.jpeg']:
+            FTYPE = 'JPEG'
+        elif thumb_extension == '.png':
+            FTYPE = 'PNG'
+        else:
+            return False  # Unrecognized file type
+
+        temp_thumb_1 = BytesIO()
+        image_1.save(temp_thumb_1, FTYPE)
+        temp_thumb_1.seek(0)
+
+        self.image_1.save(thumb_1_filename, ContentFile(temp_thumb_1.read()), save=False)
+        temp_thumb_1.close()
+
+        return True
 
