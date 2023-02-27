@@ -56,5 +56,12 @@ class ImageEnterpriseUserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Image
-        fields = ('image_id', 'title', 'image_1', 'image_2', 'image')
-        read_only_fields = ['image_id', 'image', 'image_2']
+        fields = ('title', 'image_1', 'image_2', 'image')
+        read_only_fields = ['image', 'image_2']
+
+    def create(self, validated_data):
+        """Create a image."""
+        user = self.context['request'].user
+
+        image = Image.objects.create(user=user, **validated_data)
+        return image

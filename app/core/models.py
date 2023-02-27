@@ -65,10 +65,10 @@ class UserManager(BaseUserManager):
 class Membership(models.Model):
     """Membership for """
     tier_name = models.CharField(max_length=255, unique=True)
-    image_1_height = models.IntegerField(null=False)
-    image_1_width = models.IntegerField(null=False)
-    image_2_height = models.IntegerField(null=True, blank=True)
-    image_2_width = models.IntegerField(null=True, blank=True)
+    image_1_height = models.IntegerField(null=False, default=200)
+    image_1_width = models.IntegerField(null=False, default=200)
+    image_2_height = models.IntegerField(null=True, blank=True, default=400)
+    image_2_width = models.IntegerField(null=True, blank=True, default=400)
     is_able_to_create_url = models.BooleanField(default=False)
 
     def __str__(self):
@@ -136,7 +136,7 @@ class Image(models.Model):
                          self.user.membership.image_1_height)
 
         # IF USER MEMBERSHIP IS NOT BASIC
-        if self.user.membership.image_2_width and self.user.membership.image_2_height != 0:
+        if self.user.membership.tier_name != "BASIC":
             # SAVE IMAGE 2 ( DEFAULT IN 400PX )
             image_2 = Img.open(self.image_1)
             OUTPUT_SIZE_2 = (self.user.membership.image_2_width,
