@@ -1,7 +1,6 @@
-#TODO CREATE VIEWS WITH 'GET_QUERYSET' - FILTERED BY USER AND SERIALIZER CLASS
-
 from rest_framework import viewsets, mixins, status
-from rest_framework.authentication import TokenAuthentication
+# from rest_framework.authentication import TokenAuthentication
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -23,21 +22,13 @@ class ImageViewSet(mixins.ListModelMixin,
     """View set for Image model."""
     queryset = Image.objects.all()
     serializer_class = ImageBasicUserSerializer
-    # authentication_classes = [TokenAuthentication]
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
 
-    # @swagger_auto_schema(query_serializer=ImagePremiumUserSerializer(), responses={200: ImagePremiumUserSerializer()},)
     def get_serializer_class(self):
         """Getting user membership and assign right serializer."""
         user = self.request.user
 
-        # FOR OLD ONE IN MODELS CHOICES
-        # if user.membership == "BASIC":
-        #     return ImageBasicUserSerializer
-        # if user.membership == "PREMIUM":
-        #     return ImagePremiumUserSerializer
-
-        # FOR NEW ONE WHEN TIER IS A MODEL
         if user.membership.tier_name == "BASIC":
             return ImageBasicUserSerializer
         if user.membership.tier_name == "PREMIUM":

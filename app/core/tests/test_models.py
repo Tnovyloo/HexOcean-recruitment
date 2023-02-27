@@ -2,7 +2,13 @@
 
 from django.test import TestCase
 from django.contrib.auth import get_user_model
+from django.core.files import File
 from django.urls import reverse
+
+from io import BytesIO
+from PIL import Image
+from django.core.files.base import File
+
 
 from core import models
 
@@ -11,23 +17,33 @@ import uuid
 
 def create_user(email='user@example.com', password='testpass123', membership=None):
     if membership is not None:
+        user = get_user_model().objects.create_user(email, password)
+
         membership_model = models.Membership.objects.get_or_create(tier_name=membership,
                                                             image_1_height = 200,
                                                             image_1_width = 200,
                                                             )
-        user = get_user_model().objects.create_user(email, password)
         user.membership = membership_model[0]
         return user
+
+
+    user = get_user_model().objects.create_user(email, password)
 
     basic = models.Membership.objects.get_or_create(tier_name="BASIC",
                                              image_1_height=200,
                                              image_1_width=200)
 
-    user = get_user_model().objects.create_user(email, password)
     user.membership = basic[0]
     # print(basic)
     # print(basic[0])
     return user
+
+def get_image_file(name='test.png', ext='png', size=(50, 50), color=(256, 0, 0)):
+    file_obj = StringIO()
+    image = Image.new("RGB", size=size, color=color)
+    image.save(file_obj, ext)
+    file_obj.seek(0)
+    return File(file_obj, name=name)
 
 
 class ModelTests(TestCase):
@@ -48,20 +64,18 @@ class ModelTests(TestCase):
             get_user_model().objects.create_user('', 'test123')
 
 
-    # def test_create_user_with_membership(self):
-    #     """Test user memberships"""
-    #     # New user is by default assigned to Basic class.
-    #
-    #     user = create_user()
-    #     self.assertEqual(user.membership.tier_name, 'BASIC')
-    #
-    #     # Testing Premium membership
-    #     user = create_user(email='example123123@example.com', membership="PREMIUM")
-    #     self.assertEqual(user.membership.tier_name, "PREMIUM")
-    #
-    #     # Testing Enterprise membership
-    #     user = create_user(email='exam@example.com', membership="ENTERPRISE")
-    #     self.assertEqual(user.membership.tier_name, "ENTERPRISE")
+    def test_create_user_with_membership(self):
+        """Test user memberships"""
+        # New user is by default assigned to Basic class.
+        user = create_user()
+        self.assertEqual(user.membership.tier_name, "BASIC")
+
+        user = create_user(email='sample123123@example.com', membership="PREMIUM")
+        self.assertEqual(user.membership.tier_name, "PREMIUM")
+
+        user = create_user(email='samp@example.com', membership="ENTERPRISE")
+        self.assertEqual(user.membership.tier_name, "ENTERPRISE")
+
 
 
     @patch('core.models.uuid.uuid4')

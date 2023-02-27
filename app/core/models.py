@@ -37,15 +37,18 @@ def image_file_path_2(instance, filename):
 
 
 class UserManager(BaseUserManager):
-    """Manager for the users."""
+    """Manager for users."""
 
-    def create_user(self, email, password=None, **extra_fields):
-        """Creates and returns a new user."""
+    def create_user(self, email, password=None, **extra_field):
+        """Create, save and return a new user"""
+
         if not email:
-            raise ValueError("User must have an email address.")
-        user = self.model(email=self.normalize_email(email), **extra_fields)
+            raise ValueError("User must have an email address!")
+
+        user = self.model(email=self.normalize_email(email), **extra_field)
         user.set_password(password)
-        user.save()
+        user.save(using=self._db)
+
         return user
 
     def create_superuser(self, email, password):
@@ -64,20 +67,21 @@ class Membership(models.Model):
     tier_name = models.CharField(max_length=255, unique=True)
     image_1_height = models.IntegerField(null=False)
     image_1_width = models.IntegerField(null=False)
-    image_2_height = models.IntegerField(null=True)
-    image_2_width = models.IntegerField(null=True)
+    image_2_height = models.IntegerField(null=True, blank=True)
+    image_2_width = models.IntegerField(null=True, blank=True)
+    is_able_to_create_url = models.BooleanField(default=False)
 
     def __str__(self):
         return self.tier_name
 
-    @classmethod
-    def get_default_pk(cls):
-        tier, created = cls.objects.get_or_create(
-            tier_name="BASIC",
-            image_1_height=200,
-            image_1_width=200
-        )
-        return tier.pk
+    # @classmethod
+    # def get_default_pk(cls):
+    #     tier, created = cls.objects.get_or_create(
+    #         tier_name="BASIC",
+    #         image_1_height=200,
+    #         image_1_width=200,
+    #     )
+    #     return tier.pk
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -87,8 +91,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     name = models.CharField(max_length=255)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    membership = models.ForeignKey(Membership, default=Membership.get_default_pk(),
-                                   on_delete=models.CASCADE)
+    # membership = models.ForeignKey(Membership, default=Membership.get_default_pk(),
+    #                                on_delete=models.CASCADE)
+    membership = models.ForeignKey(Membership, on_delete=models.CASCADE, blank=True, null=True)
 
     objects = UserManager()
 
@@ -96,6 +101,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def __str__(self):
         return f"{self.email}"
+
 
 
 class Image(models.Model):
@@ -185,9 +191,9 @@ class Image(models.Model):
 
         thumb_1_filename = thumb_1_name + '_thumb1' + thumb_1_extension
 
-        if thumb_2_extension in ['.jpg', '.jpeg']:
+        if thumb_1_extension in ['.jpg', '.jpeg']:
             FTYPE = 'JPEG'
-        elif thumb_extension == '.png':
+        elif thumb_1_extension == '.png':
             FTYPE = 'PNG'
         else:
             return False  # Unrecognized file type
@@ -201,3 +207,10 @@ class Image(models.Model):
 
         return True
 
+
+class URLExpiration(models.Model):
+    """Model for URL expiration"""
+
+    image = models.ForeignKey(Image, on_delete=models.CASCADE, blank=False)
+    url = models.CharField(max_length=255)
+    time = models.IntegerField(blank=False)
