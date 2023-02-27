@@ -117,7 +117,7 @@ class Image(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.user.email} | {self.title} | {self.user.membership}"
+        return f"{self.user.email} - {self.title}"
 
     def save(self, *args, **kwargs):
         """Override save method to save images in all resolution if membership permits"""
@@ -214,3 +214,7 @@ class URLExpiration(models.Model):
     image = models.ForeignKey(Image, on_delete=models.CASCADE, blank=False)
     url = models.CharField(max_length=255)
     time = models.IntegerField(blank=False)
+
+    def save(self, *args, **kwargs):
+        self.url = self.image.image.url
+        super(URLExpiration, self).save(*args, **kwargs)

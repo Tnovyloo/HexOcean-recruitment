@@ -39,13 +39,20 @@ class URLExpirationSerializer(serializers.ModelSerializer):
     """Image URL serializer"""
     class Meta:
         model = URLExpiration
-        fields = ('image', 'time')
+        fields = ('image', 'time', 'url')
         read_only_fields = ['url']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        if user.membership.is_able_to_create_url:
+            url = URLExpiration.objects.create(**validated_data)
+            return url
+        else:
+            return False
 
 
 class ImageEnterpriseUserSerializer(serializers.ModelSerializer):
     """Image model serializer for Enterprise user"""
-    # urls = URLExpirationSerializer()
 
     class Meta:
         model = Image

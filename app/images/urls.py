@@ -11,6 +11,7 @@ from images import views
 
 router = DefaultRouter()
 router.register('images', views.ImageViewSet)
+router.register('urls', views.CreateURLViewSet)
 
 app_name = 'images'
 
